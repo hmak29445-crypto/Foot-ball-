@@ -1,0 +1,121 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+local Camera = workspace.CurrentCamera
+local ballName = "Football" -- 🔄 เปลี่ยนชื่อให้ตรงกับบอลของคุณ!
+local ball = workspace:WaitForChild(ballName)
+
+local enabled = false
+local speed = 1
+local targetPos = ball.Position
+local conn = nil
+
+-- สร้าง UI
+local Gui = Instance.new("ScreenGui")
+Gui.Parent = PlayerGui
+Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local Btn = Instance.new("TextButton")
+Btn.Size = UDim2.new(0, 55, 0, 55)
+Btn.Position = UDim2.new(0.01,0,0.5,-27)
+Btn.BackgroundColor3 = Color3.fromRGB(0,160,255)
+Btn.Text = "⚽"
+Btn.TextScaled = true
+Btn.BorderSizePixel = 2
+Btn.Parent = Gui
+
+local Panel = Instance.new("Frame")
+Panel.Size = UDim2.new(0,150,0,75)
+Panel.Position = UDim2.new(0.01,0,0.5,35)
+Panel.BackgroundColor3 = Color3.fromRGB(35,35,35)
+Panel.Visible = false
+Panel.BorderSizePixel = 2
+Panel.Parent = Gui
+
+local Label = Instance.new("TextLabel")
+Label.Size = UDim2.new(1,0,0,28)
+Label.BackgroundTransparency = 1
+Label.Text = "ความเร็ว: 50%"
+Label.TextColor3 = Color3.new(1,1,1)
+Label.TextScaled = true
+Label.Parent = Panel
+
+local SliderBg = Instance.new("Frame")
+SliderBg.Size = UDim2.new(0,130,0,18)
+SliderBg.Position = UDim2.new(0,10,0,40)
+SliderBg.BackgroundColor3 = Color3.fromRGB(70,70,70)
+SliderBg.Parent = Panel
+
+local SliderFill = Instance.new("Frame")
+SliderFill.Size = UDim2.new(0.5,0,1,0)
+SliderFill.BackgroundColor3 = Color3.fromRGB(0,160,255)
+SliderFill.Parent = SliderBg
+
+-- ฟังก์ชันอัปเดตความเร็ว
+local function setSpeed(v)
+    speed = math.clamp(v, 0.01, 2)
+    local pct = math.floor(speed * 50)
+    Label.Text = "ความเร็ว: " .. pct .. "%"
+    SliderFill.Size = UDim2.new((speed-0.01)/1.99,0,1,0)
+end
+
+-- เปิด-ปิดระบบ
+local function toggle()
+    enabled = not enabled
+    Panel.Visible = enabled
+    Btn.BackgroundColor3 = enabled and Color3.fromRGB(0,200,80) or Color3.fromRGB(0,160,255)
+    if enabled then
+        Camera.CameraSubject = ball
+        Camera.CameraType = Enum.CameraType.Follow
+        targetPos = ball.Position
+        conn = RunService.RenderStepped:Connect(function()
+            local d = Vector3.new()
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then d += Vector3.new(0,0,-1) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then d += Vector3.new(0,0,1) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then d += Vector3.new(-1,0,0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then d += Vector3.new(1,0,0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then d += Vector3.new(0,1,0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then d += Vector3.new(0,-1,0) end
+            if d.Magnitude>0 then
+                targetPos += d.Unit * speed * 1.5
+                ball.Velocity = Vector3.new(0,0,0)
+                ball.Position = targetPos
+            end
+        end)
+    else
+        Camera.CameraSubject = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+        Camera.CameraType = Enum.CameraType.Custom
+        if conn then conn:Disconnect() end
+    end
+end
+
+-- เชื่อมต่อปุ่ม
+Btn.MouseButton1Click:Connect(toggle)
+
+-- ปรับแถบเลื่อน
+local drag = false
+SliderBg.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then drag=true end end)
+SliderBg.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then drag=false end end)
+UserInputService.InputChanged:Connect(function(i)
+    if drag and i.UserInputType==Enum.UserInputType.MouseMovement then
+        local x = math.clamp((i.Position.X - SliderBg.AbsolutePosition.X)/SliderBg.AbsoluteSize.X,0,1)
+        setSpeed(0.01 + x*1.99)
+    end
+end)
+
+-- ลากปุ่มได้
+local dragStart, startPos
+Btn.InputBegan:Connect(function(i)
+    if i.UserInputType==Enum.UserInputType.MouseButton1 then
+        dragStart = i.Position
+        startPos = Btn.Position
+    end
+end)
+Btn.InputChanged:Connect(function(i)
+    if dragStart and i.UserInputType==Enum.UserInputType.MouseMovement then
+        local delta = i.Position - dragStart
+        Btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset+delta.X, startPos.Y.Scale, startPos.Y.Offset+delta.Y)
+    end
+end)
+Btn.InputEnded:Connect(function() dragStart=nil end)
