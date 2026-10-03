@@ -1,0 +1,77 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local remoteEvent = ReplicatedStorage:WaitForChild("SetBallAirSpeed")
+
+-- 1. สร้าง ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BallControlGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- 2. สร้าง Frame เมนู
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 220, 0, 140)
+frame.Position = UDim2.new(0.05, 0, 0.4, 0)
+frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true -- สามารถลากเมนูไปมาบนจอได้
+frame.Parent = screenGui
+
+-- ใส่หัวข้อเมนู
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+titleLabel.Text = "⚽ เมนูคุมลูกบอล (1-100)"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextSize = 14
+titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.Parent = frame
+
+-- 3. สร้าง ช่องใส่ตัวเลข (TextBox)
+local textBox = Instance.new("TextBox")
+textBox.Size = UDim2.new(0.8, 0, 0, 35)
+textBox.Position = UDim2.new(0.1, 0, 0.3, 0)
+textBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+textBox.Text = "50"
+textBox.PlaceholderText = "ใส่เลข 1-100"
+textBox.TextColor3 = Color3.fromRGB(0, 0, 0)
+textBox.TextSize = 18
+textBox.Font = Enum.Font.SourceSans
+textBox.Parent = frame
+
+-- 4. สร้าง ปุ่มกดส่งแรง (TextButton)
+local submitButton = Instance.new("TextButton")
+submitButton.Size = UDim2.new(0.8, 0, 0, 35)
+submitButton.Position = UDim2.new(0.1, 0, 0.65, 0)
+submitButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+submitButton.Text = "ส่งแรงคุมลูกบอล"
+submitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+submitButton.TextSize = 16
+submitButton.Font = Enum.Font.SourceSansBold
+submitButton.Parent = frame
+
+-- ระบบตรวจสอบตัวเลข 1-100
+local currentSpeed = 50
+textBox.FocusLost:Connect(function()
+	local inputNumber = tonumber(textBox.Text)
+	if inputNumber then
+		currentSpeed = math.clamp(inputNumber, 1, 100)
+		textBox.Text = tostring(currentSpeed)
+	else
+		textBox.Text = tostring(currentSpeed)
+	end
+end)
+
+-- ระบบเมื่อกดปุ่ม
+submitButton.MouseButton1Click:Connect(function()
+	local ball = workspace:FindFirstChild("SoccerBall")
+	if ball then
+		remoteEvent:FireServer(ball, currentSpeed)
+	else
+		warn("ไม่พบลุกบอลชื่อ 'SoccerBall' ใน Workspace!")
+	end
+end)
